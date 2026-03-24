@@ -124,7 +124,7 @@
 
 <div id="screen-start">
   <h2>全71名のキャラクターを並べ替えよう</h2>
-  <p>2人のキャラクターを比べて、好きな方をクリック！<br>約90回の比較でランキングが完成します。<br>迷ったときは「スキップ」ボタンも使えます。</p>
+  <p>2人のキャラクターを比べて、好きな方をクリック！<br>約120回の比較でランキングが完成します。<br>迷ったときは「スキップ」ボタンも使えます。</p>
   <button class="btn-start" onclick="startSort()">スタート！</button>
 </div>
 
@@ -236,7 +236,7 @@ const characters = [
 
 let pendingResolve = null;
 let doneComparisons = 0;
-const TOTAL_ROUNDS = 90;
+const TOTAL_ROUNDS = 120;
 
 function eloUpdate(winnerScore, loserScore) {
   const K = 32;
@@ -273,13 +273,17 @@ async function askUser(a, b) {
   return new Promise(resolve => { pendingResolve = resolve; });
 }
 
-function pickPair(ids, ratings) {
-  const sample = [...ids].sort(() => Math.random() - 0.5).slice(0, 20);
-  let bestA = sample[0], bestB = sample[1], minDiff = Infinity;
-  for (let i = 0; i < sample.length; i++) {
-    for (let j = i + 1; j < sample.length; j++) {
-      const diff = Math.abs(ratings[sample[i]] - ratings[sample[j]]);
-      if (diff < minDiff) { minDiff = diff; bestA = sample[i]; bestB = sample[j]; }
+function pickPair(ids, ratings, appearances) {
+  // 出番が少ないキャラを優先してサンプリング
+  const sorted = [...ids].sort((a, b) => appearances[a] - appearances[b]);
+  const underexposed = sorted.slice(0, 20);
+  const random = [...ids].sort(() => Math.random() - 0.5).slice(0, 10);
+  const candidates = [...new Set([...underexposed, ...random])];
+  let bestA = candidates[0], bestB = candidates[1], minDiff = Infinity;
+  for (let i = 0; i < candidates.length; i++) {
+    for (let j = i + 1; j < candidates.length; j++) {
+      const diff = Math.abs(ratings[candidates[i]] - ratings[candidates[j]]);
+      if (diff < minDiff) { minDiff = diff; bestA = candidates[i]; bestB = candidates[j]; }
     }
   }
   return [bestA, bestB];
@@ -292,12 +296,14 @@ async function startSort() {
   document.getElementById('screen-battle').style.display = 'block';
   updateProgress();
 
-  const ratings = {}, byId = {};
-  characters.forEach(c => { ratings[c.id] = 1000; byId[c.id] = c; });
+  const ratings = {}, appearances = {}, byId = {};
+  characters.forEach(c => { ratings[c.id] = 1000; appearances[c.id] = 0; byId[c.id] = c; });
   const ids = characters.map(c => c.id);
 
   for (let round = 0; round < TOTAL_ROUNDS; round++) {
-    const [idA, idB] = pickPair(ids, ratings);
+    const [idA, idB] = pickPair(ids, ratings, appearances);
+    appearances[idA]++;
+    appearances[idB]++;
     const choice = await askUser(byId[idA], byId[idB]);
     if (choice === 'left')       [ratings[idA], ratings[idB]] = eloUpdate(ratings[idA], ratings[idB]);
     else if (choice === 'right') [ratings[idB], ratings[idA]] = eloUpdate(ratings[idB], ratings[idA]);
