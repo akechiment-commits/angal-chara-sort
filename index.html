@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>あんガル！！ キャラソート</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+      background: #fdf6fb;
+      color: #333;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      width: 100%;
+      background: linear-gradient(135deg, #f06292, #ce93d8);
+      color: white;
+      text-align: center;
+      padding: 18px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    header h1 { font-size: 1.5rem; letter-spacing: 0.05em; }
+    header p  { font-size: 0.85rem; opacity: 0.9; margin-top: 4px; }
+
+    #screen-start {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 24px;
+      gap: 24px;
+      max-width: 600px;
+      text-align: center;
+    }
+    #screen-start h2 { font-size: 1.4rem; color: #c2185b; }
+    #screen-start p  { color: #666; line-height: 1.7; }
+
+    .btn-start {
+      background: linear-gradient(135deg, #f06292, #ce93d8);
+      color: white;
+      border: none;
+      padding: 14px 48px;
+      font-size: 1.1rem;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(240,98,146,0.4);
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+    .btn-start:hover  { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(240,98,146,0.5); }
+    .btn-start:active { transform: translateY(0); }
+
+    #screen-battle { display: none; width: 100%; max-width: 900px; padding: 20px 16px; }
+
+    .progress-area { text-align: center; margin-bottom: 16px; }
+    .progress-label { font-size: 0.85rem; color: #888; margin-bottom: 6px; }
+    .progress-bar { width: 100%; height: 8px; background: #f0d0e8; border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #f06292, #ce93d8); border-radius: 4px; transition: width 0.3s; }
+
+    .vs-label { text-align: center; font-size: 1rem; color: #999; margin-bottom: 12px; }
+    .vs-label span { font-size: 1.4rem; color: #f06292; font-weight: bold; }
+
+    .battle-area { display: flex; gap: 16px; justify-content: center; align-items: stretch; }
+
+    .chara-card {
+      flex: 1; max-width: 380px;
+      background: white; border-radius: 16px; overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      display: flex; flex-direction: column;
+    }
+    .chara-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(240,98,146,0.3); }
+    .chara-card:active { transform: translateY(-2px); }
+
+    .card-img-wrap { width: 100%; aspect-ratio: 3/4; background: #fce4ec; overflow: hidden; position: relative; }
+    .card-img-wrap img { width: 100%; height: 100%; object-fit: contain; object-position: center top; }
+    .card-img-wrap .img-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 4rem; color: #f48fb1; }
+
+    .card-name { padding: 12px; text-align: center; font-size: 1.1rem; font-weight: bold; color: #444; border-top: 1px solid #fce4ec; }
+    .card-class { text-align: center; font-size: 0.78rem; color: #aaa; padding-bottom: 12px; }
+
+    .skip-btn { display: block; margin: 16px auto 0; background: none; border: 1px solid #ddd; color: #aaa; padding: 8px 24px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: background 0.1s; }
+    .skip-btn:hover { background: #f5f5f5; }
+
+    #screen-result { display: none; width: 100%; max-width: 700px; padding: 24px 16px; }
+    #screen-result h2 { text-align: center; color: #c2185b; font-size: 1.4rem; margin-bottom: 24px; }
+
+    .result-list { list-style: none; }
+    .result-item { display: flex; align-items: center; gap: 14px; padding: 10px 14px; margin-bottom: 8px; background: white; border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,0.07); }
+    .result-rank { font-size: 1.1rem; font-weight: bold; color: #bbb; width: 36px; text-align: center; flex-shrink: 0; }
+    .result-rank.top1 { color: #ffd700; font-size: 1.3rem; }
+    .result-rank.top2 { color: #c0c0c0; font-size: 1.2rem; }
+    .result-rank.top3 { color: #cd7f32; font-size: 1.2rem; }
+
+    .result-thumb { width: 52px; height: 52px; border-radius: 50%; overflow: hidden; background: #fce4ec; flex-shrink: 0; }
+    .result-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: center 10%; }
+    .result-name { font-size: 1rem; font-weight: bold; flex: 1; }
+    .result-class { font-size: 0.78rem; color: #aaa; }
+
+    .result-actions { display: flex; gap: 12px; justify-content: center; margin-top: 28px; flex-wrap: wrap; }
+    .btn-retry, .btn-share { padding: 12px 32px; border-radius: 25px; font-size: 0.95rem; cursor: pointer; border: none; transition: transform 0.1s; }
+    .btn-retry { background: linear-gradient(135deg, #f06292, #ce93d8); color: white; box-shadow: 0 3px 10px rgba(240,98,146,0.4); }
+    .btn-share { background: white; border: 1px solid #ddd; color: #555; }
+    .btn-retry:hover, .btn-share:hover { transform: translateY(-2px); }
+
+    @media (max-width: 500px) {
+      .battle-area { flex-direction: column; align-items: center; }
+      .chara-card { max-width: 100%; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>あんさんぶるガールズ！！ キャラソート</h1>
+  <p>好きなキャラをどんどん選んで、あなたのランキングを作ろう！</p>
+</header>
+
+<div id="screen-start">
+  <h2>全71名のキャラクターを並べ替えよう</h2>
+  <p>2人のキャラクターを比べて、好きな方をクリック！<br>全員分の比較が終わるとあなたのランキングが完成します。<br>迷ったときは「スキップ」ボタンも使えます。</p>
+  <button class="btn-start" onclick="startSort()">スタート！</button>
+</div>
+
+<div id="screen-battle">
+  <div class="progress-area">
+    <div class="progress-label" id="progress-label">0 / 0 完了</div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  </div>
+  <div class="vs-label">どちらが好き？ <span>VS</span></div>
+  <div class="battle-area">
+    <div class="chara-card" id="card-left" onclick="choose('left')">
+      <div class="card-img-wrap" id="img-left"><div class="img-placeholder">✿</div></div>
+      <div class="card-name" id="name-left">—</div>
+      <div class="card-class" id="class-left"></div>
+    </div>
+    <div class="chara-card" id="card-right" onclick="choose('right')">
+      <div class="card-img-wrap" id="img-right"><div class="img-placeholder">✿</div></div>
+      <div class="card-name" id="name-right">—</div>
+      <div class="card-class" id="class-right"></div>
+    </div>
+  </div>
+  <button class="skip-btn" onclick="choose('skip')">どちらでもない・スキップ</button>
+</div>
+
+<div id="screen-result">
+  <h2>🌸 あなたのランキング</h2>
+  <ol class="result-list" id="result-list"></ol>
+  <div class="result-actions">
+    <button class="btn-retry" onclick="startSort()">もう一度ソートする</button>
+    <button class="btn-share" onclick="copyResult()">結果をコピー</button>
+  </div>
+</div>
+
+<script>
+const BASE_IMG = "https://hatotank.net/kmskwiki/_media/chara/";
+const characters = [
+  { id: 1,  name: "三波なつみ",     img: "024", cls: "2-A" },
+  { id: 2,  name: "堀田さあや",     img: "025", cls: "2-A" },
+  { id: 3,  name: "春風なな",       img: "026", cls: "2-A" },
+  { id: 4,  name: "鶴海ひまり",     img: "054", cls: "3-B" },
+  { id: 5,  name: "四方みつる",     img: "145", cls: "3-A" },
+  { id: 6,  name: "悠木ともこ",     img: "040", cls: "2-C" },
+  { id: 7,  name: "神樹いちか",     img: "013", cls: "1-B" },
+  { id: 8,  name: "神樹はじめ",     img: "063", cls: "3-C" },
+  { id: 9,  name: "久坂あやめ",     img: "055", cls: "3-B" },
+  { id: 10, name: "黒森すず",       img: "056", cls: "3-B" },
+  { id: 11, name: "瀬川かえで",     img: "057", cls: "3-B" },
+  { id: 12, name: "伊藤さくら",     img: "058", cls: "3-B" },
+  { id: 13, name: "円城寺れいか",   img: "146", cls: "3-A" },
+  { id: 14, name: "双葉みづき",     img: "147", cls: "3-A" },
+  { id: 15, name: "双葉みなづき",   img: "148", cls: "3-A" },
+  { id: 16, name: "八朔つゆり",     img: "027", cls: "2-A" },
+  { id: 17, name: "小鳩あずさ",     img: "017", cls: "1-C" },
+  { id: 18, name: "夢路まりあ",     img: "031", cls: "2-B" },
+  { id: 19, name: "氷野くるみ",     img: "012", cls: "1-B" },
+  { id: 20, name: "梅園かな",       img: "032", cls: "2-B" },
+  { id: 21, name: "猫塚みけ",       img: "016", cls: "1-C" },
+  { id: 22, name: "雉子すみれ",     img: "021", cls: "1-C" },
+  { id: 23, name: "冴木もも",       img: "045", cls: "2-C" },
+  { id: 24, name: "日滝ましろ",     img: "064", cls: "3-C" },
+  { id: 25, name: "深鳥ふみ",       img: "065", cls: "3-C" },
+  { id: 26, name: "笹芽ひよの",     img: "042", cls: "2-C" },
+  { id: 27, name: "八壁ひかる",     img: "059", cls: "3-B" },
+  { id: 28, name: "月永るか",       img: "011", cls: "1-B" },
+  { id: 29, name: "藤猪しずく",     img: "022", cls: "1-C" },
+  { id: 30, name: "長町やえ",       img: "008", cls: "1-B" },
+  { id: 31, name: "時国そら",       img: "066", cls: "3-C" },
+  { id: 32, name: "早川きこ",       img: "005", cls: "1-A" },
+  { id: 33, name: "高原ちあき",     img: "001", cls: "1-A" },
+  { id: 34, name: "小野ちよ",       img: "002", cls: "1-A" },
+  { id: 35, name: "藍乃あいか",     img: "003", cls: "1-A" },
+  { id: 36, name: "桃智あすか",     img: "004", cls: "1-A" },
+  { id: 37, name: "三善かなえ",     img: "006", cls: "1-A" },
+  { id: 38, name: "北川ゆき",       img: "007", cls: "1-A" },
+  { id: 39, name: "木之下ゆゆ",     img: "009", cls: "1-B" },
+  { id: 40, name: "丸子みさき",     img: "010", cls: "1-B" },
+  { id: 41, name: "大虎いさみ",     img: "018", cls: "1-C" },
+  { id: 42, name: "鯱いかり",       img: "019", cls: "1-C" },
+  { id: 43, name: "熊沢ひめの",     img: "020", cls: "1-C" },
+  { id: 44, name: "長居ゆう",       img: "028", cls: "2-A" },
+  { id: 45, name: "星海こよい",     img: "029", cls: "2-A" },
+  { id: 46, name: "夏野ゆり",       img: "030", cls: "2-A" },
+  { id: 47, name: "安条まい",       img: "033", cls: "2-B" },
+  { id: 48, name: "龍泉寺レンレン", img: "034", cls: "2-B" },
+  { id: 49, name: "遠見ちか",       img: "035", cls: "2-B" },
+  { id: 50, name: "桐島かいり",     img: "036", cls: "2-B" },
+  { id: 51, name: "柊るな",         img: "037", cls: "2-B" },
+  { id: 52, name: "砂賀みどり",     img: "039", cls: "2-C" },
+  { id: 53, name: "夜霧はやて",     img: "041", cls: "2-C" },
+  { id: 54, name: "クー・カロア",   img: "043", cls: "2-C" },
+  { id: 55, name: "花丘まり",       img: "149", cls: "3-A" },
+  { id: 56, name: "小松ぼたん",     img: "150", cls: "3-A" },
+  { id: 57, name: "棗ひびき",       img: "067", cls: "3-C" },
+  { id: 58, name: "峰山しおん",     img: "068", cls: "3-C" },
+  { id: 59, name: "神無月ほとり",   img: "069", cls: "3-C" },
+  { id: 60, name: "八雲ちづる",     img: "070", cls: "3-C" },
+  { id: 61, name: "山條ぎん",       img: "151", cls: "3-A" },
+  { id: 62, name: "湖南やこ",       img: "152", cls: "3-A" },
+  { id: 63, name: "水嶌うしお",     img: "060", cls: "3-B" },
+  { id: 64, name: "花音ことり",     img: "014", cls: "1-B" },
+  { id: 65, name: "羽森つばさ",     img: "015", cls: "1-B" },
+  { id: 66, name: "曽根セイラ",     img: "071", cls: "3-C" },
+  { id: 67, name: "天宮るり",       img: "061", cls: "3-B" },
+  { id: 68, name: "榊むつみ",       img: "044", cls: "2-C" },
+  { id: 69, name: "岩戸サン",       img: "062", cls: "3-B" },
+  { id: 70, name: "鶯木こはる",     img: "023", cls: "1-C" },
+  { id: 71, name: "御影かすみ",     img: "153", cls: "3-A" },
+];
+
+let pendingResolve = null;
+let totalComparisons = 0;
+let doneComparisons  = 0;
+
+function estimateComparisons(n) { return Math.ceil(n * Math.log2(n)); }
+
+function updateProgress() {
+  const pct = totalComparisons > 0 ? Math.min(100, Math.round(doneComparisons / totalComparisons * 100)) : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = `${doneComparisons} / 約${totalComparisons} 回答済み`;
+}
+
+function showCard(side, chara) {
+  const imgWrap = document.getElementById('img-' + side);
+  const url = BASE_IMG + chara.img + '.png';
+  imgWrap.innerHTML = `<img src="${url}" alt="${chara.name}" onerror="this.parentNode.innerHTML='<div class=\\'img-placeholder\\'>✿</div>'" loading="lazy">`;
+  document.getElementById('name-' + side).textContent = chara.name;
+  document.getElementById('class-' + side).textContent = chara.cls + '組';
+}
+
+function choose(side) {
+  if (!pendingResolve) return;
+  doneComparisons++;
+  const cb = pendingResolve;
+  pendingResolve = null;
+  cb(side);
+}
+
+async function askUser(a, b) {
+  showCard('left', a);
+  showCard('right', b);
+  updateProgress();
+  return new Promise(resolve => { pendingResolve = resolve; });
+}
+
+async function merge(left, right) {
+  const result = [];
+  let i = 0, j = 0;
+  while (i < left.length && j < right.length) {
+    const choice = await askUser(left[i], right[j]);
+    if (choice === 'right') result.push(right[j++]);
+    else if (choice === 'left') result.push(left[i++]);
+    else result.push(left[i++]);
+  }
+  return [...result, ...left.slice(i), ...right.slice(j)];
+}
+
+async function mergeSort(arr) {
+  if (arr.length <= 1) return arr;
+  const mid = Math.floor(arr.length / 2);
+  const left  = await mergeSort(arr.slice(0, mid));
+  const right = await mergeSort(arr.slice(mid));
+  return merge(left, right);
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+async function startSort() {
+  doneComparisons = 0;
+  totalComparisons = estimateComparisons(characters.length);
+  document.getElementById('screen-start').style.display  = 'none';
+  document.getElementById('screen-result').style.display = 'none';
+  document.getElementById('screen-battle').style.display = 'block';
+  updateProgress();
+  const sorted = await mergeSort(shuffle([...characters]));
+  showResult(sorted);
+}
+
+function showResult(sorted) {
+  document.getElementById('screen-battle').style.display = 'none';
+  document.getElementById('screen-result').style.display = 'block';
+  const list = document.getElementById('result-list');
+  list.innerHTML = '';
+  sorted.forEach((chara, i) => {
+    const rank = i + 1;
+    let rankClass = '', rankLabel = rank + '位';
+    if (rank === 1) { rankClass = 'top1'; rankLabel = '🥇'; }
+    if (rank === 2) { rankClass = 'top2'; rankLabel = '🥈'; }
+    if (rank === 3) { rankClass = 'top3'; rankLabel = '🥉'; }
+    const li = document.createElement('li');
+    li.className = 'result-item';
+    li.innerHTML = `<span class="result-rank ${rankClass}">${rankLabel}</span><div class="result-thumb"><img src="${BASE_IMG}${chara.img}.png" alt="${chara.name}" onerror="this.style.display='none'" loading="lazy"></div><span class="result-name">${chara.name}</span><span class="result-class">${chara.cls}組</span>`;
+    list.appendChild(li);
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function copyResult() {
+  const items = document.querySelectorAll('.result-item');
+  const lines = ['【あんガル！！ キャラソート結果】'];
+  items.forEach((item, i) => {
+    const name = item.querySelector('.result-name').textContent;
+    const cls  = item.querySelector('.result-class').textContent;
+    lines.push(`${i+1}位: ${name}（${cls}）`);
+  });
+  navigator.clipboard.writeText(lines.join('\n'))
+    .then(() => alert('クリップボードにコピーしました！'))
+    .catch(() => alert('コピーに失敗しました'));
+}
+</script>
+</body>
+</html>
