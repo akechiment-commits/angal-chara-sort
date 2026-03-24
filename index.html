@@ -123,13 +123,13 @@
 
 <div id="screen-start">
   <h2>全71名のキャラクターを並べ替えよう</h2>
-  <p>2人のキャラクターを比べて、好きな方をクリック！<br>全員分の比較が終わるとあなたのランキングが完成します。<br>迷ったときは「スキップ」ボタンも使えます。</p>
+  <p>2人のキャラクターを比べて、好きな方をクリック！<br>約90回の比較でランキングが完成します。<br>迷ったときは「スキップ」ボタンも使えます。</p>
   <button class="btn-start" onclick="startSort()">スタート！</button>
 </div>
 
 <div id="screen-battle">
   <div class="progress-area">
-    <div class="progress-label" id="progress-label">0 / 0 完了</div>
+    <div class="progress-label" id="progress-label">0 / 90 完了</div>
     <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
   </div>
   <div class="vs-label">どちらが好き？ <span>VS</span></div>
@@ -234,21 +234,24 @@ const characters = [
 ];
 
 let pendingResolve = null;
-let totalComparisons = 0;
-let doneComparisons  = 0;
+let doneComparisons = 0;
+const TOTAL_ROUNDS = 90;
 
-function estimateComparisons(n) { return Math.ceil(n * Math.log2(n)); }
+function eloUpdate(winnerScore, loserScore) {
+  const K = 32;
+  const expected = 1 / (1 + Math.pow(10, (loserScore - winnerScore) / 400));
+  return [winnerScore + K * (1 - expected), loserScore - K * (1 - expected)];
+}
 
 function updateProgress() {
-  const pct = totalComparisons > 0 ? Math.min(100, Math.round(doneComparisons / totalComparisons * 100)) : 0;
+  const pct = Math.min(100, Math.round(doneComparisons / TOTAL_ROUNDS * 100));
   document.getElementById('progress-fill').style.width = pct + '%';
-  document.getElementById('progress-label').textContent = `${doneComparisons} / 約${totalComparisons} 回答済み`;
+  document.getElementById('progress-label').textContent = `${doneComparisons} / ${TOTAL_ROUNDS} 回答済み`;
 }
 
 function showCard(side, chara) {
   const imgWrap = document.getElementById('img-' + side);
-  const url = BASE_IMG + chara.img + '.png';
-  imgWrap.innerHTML = `<img src="${url}" alt="${chara.name}" onerror="this.parentNode.innerHTML='<div class=\\'img-placeholder\\'>✿</div>'" loading="lazy">`;
+  imgWrap.innerHTML = `<img src="${BASE_IMG}${chara.img}.png" alt="${chara.name}" onerror="this.parentNode.innerHTML='<div class=\\'img-placeholder\\'>✿</div>'" loading="lazy">`;
   document.getElementById('name-' + side).textContent = chara.name;
   document.getElementById('class-' + side).textContent = chara.cls + '組';
 }
@@ -268,43 +271,37 @@ async function askUser(a, b) {
   return new Promise(resolve => { pendingResolve = resolve; });
 }
 
-async function merge(left, right) {
-  const result = [];
-  let i = 0, j = 0;
-  while (i < left.length && j < right.length) {
-    const choice = await askUser(left[i], right[j]);
-    if (choice === 'right') result.push(right[j++]);
-    else if (choice === 'left') result.push(left[i++]);
-    else result.push(left[i++]);
+function pickPair(ids, ratings) {
+  const sample = [...ids].sort(() => Math.random() - 0.5).slice(0, 20);
+  let bestA = sample[0], bestB = sample[1], minDiff = Infinity;
+  for (let i = 0; i < sample.length; i++) {
+    for (let j = i + 1; j < sample.length; j++) {
+      const diff = Math.abs(ratings[sample[i]] - ratings[sample[j]]);
+      if (diff < minDiff) { minDiff = diff; bestA = sample[i]; bestB = sample[j]; }
+    }
   }
-  return [...result, ...left.slice(i), ...right.slice(j)];
-}
-
-async function mergeSort(arr) {
-  if (arr.length <= 1) return arr;
-  const mid = Math.floor(arr.length / 2);
-  const left  = await mergeSort(arr.slice(0, mid));
-  const right = await mergeSort(arr.slice(mid));
-  return merge(left, right);
-}
-
-function shuffle(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
+  return [bestA, bestB];
 }
 
 async function startSort() {
   doneComparisons = 0;
-  totalComparisons = estimateComparisons(characters.length);
   document.getElementById('screen-start').style.display  = 'none';
   document.getElementById('screen-result').style.display = 'none';
   document.getElementById('screen-battle').style.display = 'block';
   updateProgress();
-  const sorted = await mergeSort(shuffle([...characters]));
-  showResult(sorted);
+
+  const ratings = {}, byId = {};
+  characters.forEach(c => { ratings[c.id] = 1000; byId[c.id] = c; });
+  const ids = characters.map(c => c.id);
+
+  for (let round = 0; round < TOTAL_ROUNDS; round++) {
+    const [idA, idB] = pickPair(ids, ratings);
+    const choice = await askUser(byId[idA], byId[idB]);
+    if (choice === 'left')       [ratings[idA], ratings[idB]] = eloUpdate(ratings[idA], ratings[idB]);
+    else if (choice === 'right') [ratings[idB], ratings[idA]] = eloUpdate(ratings[idB], ratings[idA]);
+  }
+
+  showResult([...characters].sort((a, b) => ratings[b.id] - ratings[a.id]));
 }
 
 function showResult(sorted) {
@@ -330,9 +327,7 @@ function copyResult() {
   const items = document.querySelectorAll('.result-item');
   const lines = ['【あんガル！！ キャラソート結果】'];
   items.forEach((item, i) => {
-    const name = item.querySelector('.result-name').textContent;
-    const cls  = item.querySelector('.result-class').textContent;
-    lines.push(`${i+1}位: ${name}（${cls}）`);
+    lines.push(`${i+1}位: ${item.querySelector('.result-name').textContent}（${item.querySelector('.result-class').textContent}）`);
   });
   navigator.clipboard.writeText(lines.join('\n'))
     .then(() => alert('クリップボードにコピーしました！'))
