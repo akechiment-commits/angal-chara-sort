@@ -77,8 +77,9 @@
     .chara-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(240,98,146,0.3); }
     .chara-card:active { transform: translateY(-2px); }
 
-    .card-img-wrap { width: 100%; aspect-ratio: 3/4; background: #fce4ec; overflow: hidden; position: relative; }
-    .card-img-wrap img { width: 100%; height: 100%; object-fit: contain; object-position: center top; }
+    .card-img-wrap { width: 100%; background: #fce4ec; overflow: hidden; position: relative; display: flex; flex-direction: column; }
+    .card-img-wrap .chara-img { width: 100%; height: auto; display: block; }
+    .card-img-wrap .profile-img { width: 100%; height: auto; display: block; }
     .card-img-wrap .img-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 4rem; color: #f48fb1; }
 
     .card-name { padding: 12px; text-align: center; font-size: 1.1rem; font-weight: bold; color: #444; border-top: 1px solid #fce4ec; }
@@ -251,7 +252,8 @@ function updateProgress() {
 
 function showCard(side, chara) {
   const imgWrap = document.getElementById('img-' + side);
-  imgWrap.innerHTML = `<img src="${BASE_IMG}${chara.img}.png" alt="${chara.name}" onerror="this.parentNode.innerHTML='<div class=\\'img-placeholder\\'>✿</div>'" loading="lazy">`;
+  const year = chara.cls[0];
+  imgWrap.innerHTML = `<img class="chara-img" src="${BASE_IMG}${chara.img}.png" alt="${chara.name}" onerror="this.parentNode.innerHTML='<div class=\\'img-placeholder\\'>✿</div>'" loading="lazy"><img class="profile-img" src="${BASE_IMG}profile_${year}.png" alt="" loading="lazy">`;
   document.getElementById('name-' + side).textContent = chara.name;
   document.getElementById('class-' + side).textContent = chara.cls + '組';
 }
