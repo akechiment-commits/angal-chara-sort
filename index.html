@@ -280,6 +280,7 @@ let doneComparisons = 0;
 let currentTotalRounds = 120;
 let selectedScope = 'all';
 let selectedAccuracy = 'medium';
+let inFinal = false, finalDone = 0, finalTotal = 0;
 
 const ROUND_MULTIPLIERS = { short: 1.2, medium: 1.7, long: 2.5 };
 
@@ -323,6 +324,10 @@ function eloUpdate(winnerScore, loserScore) {
 }
 
 function updateProgress() {
+  if (inFinal) {
+    document.getElementById('progress-label').textContent = `🏆 決勝戦 ${finalDone} / ${finalTotal}`;
+    return;
+  }
   const pct = Math.min(100, Math.round(doneComparisons / currentTotalRounds * 100));
   document.getElementById('progress-fill').style.width = pct + '%';
   document.getElementById('progress-label').textContent = `${doneComparisons} / ${currentTotalRounds} 回答済み`;
@@ -371,6 +376,8 @@ async function startSort() {
   const targetChars = getFilteredCharacters();
   currentTotalRounds = calcTotalRounds(targetChars.length);
   doneComparisons = 0;
+  inFinal = false;
+  document.querySelector('.vs-label').innerHTML = 'どちらが好き？ <span>VS</span>';
   document.getElementById('screen-start').style.display  = 'none';
   document.getElementById('screen-result').style.display = 'none';
   document.getElementById('screen-battle').style.display = 'block';
@@ -389,7 +396,30 @@ async function startSort() {
     else if (choice === 'right') [ratings[idB], ratings[idA]] = eloUpdate(ratings[idB], ratings[idA]);
   }
 
-  showResult([...targetChars].sort((a, b) => ratings[b.id] - ratings[a.id]));
+  // 決勝戦：上位5人で総当たり
+  const mainSorted = [...targetChars].sort((a, b) => ratings[b.id] - ratings[a.id]);
+  const finalCount = Math.min(5, targetChars.length);
+  const finalists = mainSorted.slice(0, finalCount).map(c => c.id);
+
+  inFinal = true;
+  finalDone = 0;
+  finalTotal = finalCount * (finalCount - 1) / 2;
+  document.querySelector('.vs-label').innerHTML = '🏆 決勝戦 🏆 &nbsp;<span>VS</span>';
+  document.getElementById('progress-fill').style.width = '100%';
+
+  const wins = Object.fromEntries(finalists.map(id => [id, 0]));
+  for (let i = 0; i < finalists.length; i++) {
+    for (let j = i + 1; j < finalists.length; j++) {
+      const choice = await askUser(byId[finalists[i]], byId[finalists[j]]);
+      if (choice === 'left')  wins[finalists[i]]++;
+      else if (choice === 'right') wins[finalists[j]]++;
+      finalDone++;
+    }
+  }
+
+  inFinal = false;
+  const finalRanked = [...finalists].sort((a, b) => wins[b] - wins[a] || ratings[b] - ratings[a]);
+  showResult([...finalRanked.map(id => byId[id]), ...mainSorted.slice(finalCount)]);
 }
 
 function showResult(sorted) {
