@@ -307,7 +307,8 @@ function selectAccuracy(acc) {
 
 function updateStartDesc() {
   const chars = getFilteredCharacters();
-  const rounds = calcTotalRounds(chars.length);
+  const finalCount = Math.min(3, chars.length);
+  const rounds = calcTotalRounds(chars.length) + finalCount * (finalCount - 1) / 2;
   document.getElementById('start-desc').textContent = `2人を比べて好きな方をクリック！約${rounds}回の比較でランキングが完成します。`;
 }
 
