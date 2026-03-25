@@ -369,7 +369,7 @@ function pickPair(ids, ratings, appearances) {
 
 async function startSort() {
   const targetChars = getFilteredCharacters();
-  const finalCount = Math.min(5, targetChars.length);
+  const finalCount = Math.min(3, targetChars.length);
   const finalTotal = finalCount * (finalCount - 1) / 2;
   currentTotalRounds = calcTotalRounds(targetChars.length) + finalTotal;
   doneComparisons = 0;
