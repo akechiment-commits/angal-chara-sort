@@ -54,6 +54,27 @@
     .btn-start:hover  { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(240,98,146,0.5); }
     .btn-start:active { transform: translateY(0); }
 
+    .selector-area { display: flex; flex-direction: column; gap: 20px; width: 100%; }
+    .option-label { font-size: 0.82rem; color: #999; margin-bottom: 8px; text-align: center; }
+    .option-group { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    .opt-btn {
+      padding: 8px 18px;
+      border: 2px solid #e8b4d0;
+      border-radius: 20px;
+      background: white;
+      color: #c2185b;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .opt-btn.active {
+      background: linear-gradient(135deg, #f06292, #ce93d8);
+      border-color: transparent;
+      color: white;
+      font-weight: bold;
+    }
+    .opt-btn:hover:not(.active) { background: #fce4ec; }
+
     #screen-battle { display: none; width: 100%; max-width: 900px; padding: 20px 16px; }
 
     .progress-area { text-align: center; margin-bottom: 16px; }
@@ -123,8 +144,28 @@
 </header>
 
 <div id="screen-start">
-  <h2>全71名のキャラクターを並べ替えよう</h2>
-  <p>2人のキャラクターを比べて、好きな方をクリック！<br>約120回の比較でランキングが完成します。<br>迷ったときは「スキップ」ボタンも使えます。</p>
+  <h2>好きなキャラクターを並べ替えよう</h2>
+  <div class="selector-area">
+    <div>
+      <div class="option-label">対象キャラクター</div>
+      <div class="option-group">
+        <button class="opt-btn scope-btn active" data-scope="all"    onclick="selectScope('all')">全員（71名）</button>
+        <button class="opt-btn scope-btn"        data-scope="grade1" onclick="selectScope('grade1')">1年生（23名）</button>
+        <button class="opt-btn scope-btn"        data-scope="grade2" onclick="selectScope('grade2')">2年生（21名）</button>
+        <button class="opt-btn scope-btn"        data-scope="grade3" onclick="selectScope('grade3')">3年生（27名）</button>
+      </div>
+    </div>
+    <div>
+      <div class="option-label">精度（回答回数）</div>
+      <div class="option-group">
+        <button class="opt-btn accuracy-btn"        data-accuracy="short"  onclick="selectAccuracy('short')">短め</button>
+        <button class="opt-btn accuracy-btn active" data-accuracy="medium" onclick="selectAccuracy('medium')">中くらい</button>
+        <button class="opt-btn accuracy-btn"        data-accuracy="long"   onclick="selectAccuracy('long')">長め</button>
+      </div>
+    </div>
+  </div>
+  <p id="start-desc" style="color:#666;line-height:1.7;"></p>
+  <p style="color:#aaa;font-size:0.8rem;">迷ったときは「スキップ」ボタンも使えます。</p>
   <button class="btn-start" onclick="startSort()">スタート！</button>
 </div>
 
@@ -153,7 +194,7 @@
   <h2>🌸 あなたのランキング</h2>
   <ol class="result-list" id="result-list"></ol>
   <div class="result-actions">
-    <button class="btn-retry" onclick="startSort()">もう一度ソートする</button>
+    <button class="btn-retry" onclick="goToStart()">もう一度ソートする</button>
     <button class="btn-share" onclick="copyResult()">結果をコピー</button>
   </div>
 </div>
@@ -236,7 +277,44 @@ const characters = [
 
 let pendingResolve = null;
 let doneComparisons = 0;
-const TOTAL_ROUNDS = 120;
+let currentTotalRounds = 120;
+let selectedScope = 'all';
+let selectedAccuracy = 'medium';
+
+const ROUND_MULTIPLIERS = { short: 1.2, medium: 1.7, long: 2.5 };
+
+function getFilteredCharacters() {
+  if (selectedScope === 'all') return characters;
+  const grade = selectedScope.slice(-1);
+  return characters.filter(c => c.cls.startsWith(grade + '-'));
+}
+
+function calcTotalRounds(n) {
+  return Math.round(n * ROUND_MULTIPLIERS[selectedAccuracy]);
+}
+
+function selectScope(scope) {
+  selectedScope = scope;
+  document.querySelectorAll('.scope-btn').forEach(b => b.classList.toggle('active', b.dataset.scope === scope));
+  updateStartDesc();
+}
+
+function selectAccuracy(acc) {
+  selectedAccuracy = acc;
+  document.querySelectorAll('.accuracy-btn').forEach(b => b.classList.toggle('active', b.dataset.accuracy === acc));
+  updateStartDesc();
+}
+
+function updateStartDesc() {
+  const chars = getFilteredCharacters();
+  const rounds = calcTotalRounds(chars.length);
+  document.getElementById('start-desc').textContent = `2人を比べて好きな方をクリック！約${rounds}回の比較でランキングが完成します。`;
+}
+
+function goToStart() {
+  document.getElementById('screen-result').style.display = 'none';
+  document.getElementById('screen-start').style.display  = 'flex';
+}
 
 function eloUpdate(winnerScore, loserScore) {
   const K = 32;
@@ -245,9 +323,9 @@ function eloUpdate(winnerScore, loserScore) {
 }
 
 function updateProgress() {
-  const pct = Math.min(100, Math.round(doneComparisons / TOTAL_ROUNDS * 100));
+  const pct = Math.min(100, Math.round(doneComparisons / currentTotalRounds * 100));
   document.getElementById('progress-fill').style.width = pct + '%';
-  document.getElementById('progress-label').textContent = `${doneComparisons} / ${TOTAL_ROUNDS} 回答済み`;
+  document.getElementById('progress-label').textContent = `${doneComparisons} / ${currentTotalRounds} 回答済み`;
 }
 
 function showCard(side, chara) {
@@ -290,6 +368,8 @@ function pickPair(ids, ratings, appearances) {
 }
 
 async function startSort() {
+  const targetChars = getFilteredCharacters();
+  currentTotalRounds = calcTotalRounds(targetChars.length);
   doneComparisons = 0;
   document.getElementById('screen-start').style.display  = 'none';
   document.getElementById('screen-result').style.display = 'none';
@@ -297,10 +377,10 @@ async function startSort() {
   updateProgress();
 
   const ratings = {}, appearances = {}, byId = {};
-  characters.forEach(c => { ratings[c.id] = 1000; appearances[c.id] = 0; byId[c.id] = c; });
-  const ids = characters.map(c => c.id);
+  targetChars.forEach(c => { ratings[c.id] = 1000; appearances[c.id] = 0; byId[c.id] = c; });
+  const ids = targetChars.map(c => c.id);
 
-  for (let round = 0; round < TOTAL_ROUNDS; round++) {
+  for (let round = 0; round < currentTotalRounds; round++) {
     const [idA, idB] = pickPair(ids, ratings, appearances);
     appearances[idA]++;
     appearances[idB]++;
@@ -309,7 +389,7 @@ async function startSort() {
     else if (choice === 'right') [ratings[idB], ratings[idA]] = eloUpdate(ratings[idB], ratings[idA]);
   }
 
-  showResult([...characters].sort((a, b) => ratings[b.id] - ratings[a.id]));
+  showResult([...targetChars].sort((a, b) => ratings[b.id] - ratings[a.id]));
 }
 
 function showResult(sorted) {
@@ -341,6 +421,8 @@ function copyResult() {
     .then(() => alert('クリップボードにコピーしました！'))
     .catch(() => alert('コピーに失敗しました'));
 }
+
+updateStartDesc();
 </script>
 </body>
 </html>
