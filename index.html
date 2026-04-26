@@ -134,6 +134,30 @@
       .battle-area { flex-direction: column; align-items: center; }
       .chara-card { max-width: 100%; width: 100%; }
     }
+
+    .stats-section {
+      width: 100%;
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    }
+    .stats-title { text-align: center; font-size: 1rem; color: #c2185b; font-weight: bold; margin-bottom: 12px; }
+    .stats-counter-line { text-align: center; font-size: 0.9rem; color: #666; margin-bottom: 16px; }
+    .stats-counter-num { font-size: 1.4rem; font-weight: bold; color: #f06292; }
+    .stats-ranking-title { font-size: 0.82rem; color: #999; margin-bottom: 8px; text-align: center; }
+    .stats-rank-list { list-style: none; }
+    .stats-rank-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-bottom: 1px solid #fce4ec; }
+    .stats-rank-item:last-child { border-bottom: none; }
+    .stats-rank-num { font-size: 0.9rem; font-weight: bold; color: #bbb; width: 30px; text-align: center; flex-shrink: 0; }
+    .stats-rank-num.top1 { color: #ffd700; font-size: 1.1rem; }
+    .stats-rank-num.top2 { color: #c0c0c0; font-size: 1rem; }
+    .stats-rank-num.top3 { color: #cd7f32; font-size: 1rem; }
+    .stats-rank-thumb { width: 36px; height: 36px; border-radius: 50%; overflow: hidden; background: #fce4ec; flex-shrink: 0; }
+    .stats-rank-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: center 10%; }
+    .stats-rank-name { flex: 1; font-size: 0.88rem; font-weight: bold; }
+    .stats-rank-count { font-size: 0.75rem; color: #aaa; flex-shrink: 0; }
+    .stats-loading { text-align: center; color: #ccc; font-size: 0.82rem; padding: 8px; }
   </style>
 </head>
 <body>
@@ -167,6 +191,18 @@
   <p id="start-desc" style="color:#666;line-height:1.7;"></p>
   <p style="color:#aaa;font-size:0.8rem;">迷ったときは「スキップ」ボタンも使えます。</p>
   <button class="btn-start" onclick="startSort()">スタート！</button>
+
+  <div id="stats-section" class="stats-section" style="display:none">
+    <div class="stats-title">🌸 みんなのキャラソート</div>
+    <div class="stats-counter-line" id="stats-counter-line" style="display:none">
+      <span class="stats-counter-num" id="stats-access-num">0</span> 人が挑戦しました！
+    </div>
+    <div id="stats-ranking-area" style="display:none">
+      <div class="stats-ranking-title">1位に選ばれた回数ランキング</div>
+      <ol class="stats-rank-list" id="stats-rank-list"></ol>
+    </div>
+    <div class="stats-loading" id="stats-loading">読み込み中…</div>
+  </div>
 </div>
 
 <div id="screen-battle">
@@ -198,6 +234,10 @@
     <button class="btn-share" onclick="copyResult()">結果をコピー</button>
   </div>
 </div>
+
+<!-- Firebase SDK (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-database-compat.js"></script>
 
 <script>
 const BASE_IMG = "images/";
@@ -315,6 +355,7 @@ function updateStartDesc() {
 function goToStart() {
   document.getElementById('screen-result').style.display = 'none';
   document.getElementById('screen-start').style.display  = 'flex';
+  loadCommunityStats();
 }
 
 function eloUpdate(winnerScore, loserScore) {
@@ -429,6 +470,7 @@ function showResult(sorted) {
     list.appendChild(li);
   });
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (sorted.length > 0) trackResult(sorted[0].id);
 }
 
 function copyResult() {
@@ -453,6 +495,84 @@ function copyResult() {
 }
 
 updateStartDesc();
+
+// ── Firebase 設定 ──────────────────────────────────────────────────────────────
+// 1. https://console.firebase.google.com/ でプロジェクトを作成
+// 2. Realtime Database を有効化（テストモードで開始でOK）
+// 3. Database Rules を以下に設定:
+//    { "rules": { "stats": { ".read": true, ".write": true } } }
+// 4. プロジェクト設定 > マイアプリ からウェブアプリを追加し、下記の値を埋める
+const FIREBASE_CONFIG = {
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
+  databaseURL:       "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+  projectId:         "YOUR_PROJECT_ID",
+  storageBucket:     "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId:             "YOUR_APP_ID"
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
+let _db = null;
+(function initFirebase() {
+  if (typeof firebase === 'undefined') return;
+  if (FIREBASE_CONFIG.apiKey.startsWith('YOUR_')) return;
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    _db = firebase.database();
+  } catch (e) {}
+})();
+
+function trackAccess() {
+  if (!_db) return;
+  _db.ref('stats/accessCount').transaction(v => (v || 0) + 1).catch(() => {});
+}
+
+function trackResult(charId) {
+  if (!_db) return;
+  _db.ref('stats/votes/' + charId).transaction(v => (v || 0) + 1).catch(() => {});
+}
+
+async function loadCommunityStats() {
+  if (!_db) return;
+  try {
+    const snap = await _db.ref('stats').get();
+    const data = snap.val() || {};
+    const accessCount = data.accessCount || 0;
+    const votes = data.votes || {};
+
+    document.getElementById('stats-access-num').textContent = accessCount.toLocaleString();
+    document.getElementById('stats-counter-line').style.display = '';
+
+    const ranked = Object.entries(votes)
+      .map(([id, count]) => ({ chara: characters.find(c => c.id === Number(id)), count }))
+      .filter(x => x.chara)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    if (ranked.length > 0) {
+      const list = document.getElementById('stats-rank-list');
+      list.innerHTML = '';
+      ranked.forEach(({ chara, count }, i) => {
+        const rank = i + 1;
+        const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
+        const rankLabel = medals[rank] || (rank + '位');
+        const rankClass = rank <= 3 ? 'top' + rank : '';
+        const li = document.createElement('li');
+        li.className = 'stats-rank-item';
+        li.innerHTML = `<span class="stats-rank-num ${rankClass}">${rankLabel}</span><div class="stats-rank-thumb"><img src="${BASE_IMG}${chara.img}.png" alt="${chara.name}" onerror="this.style.display='none'" loading="lazy"></div><span class="stats-rank-name">${chara.name}</span><span class="stats-rank-count">${count}回</span>`;
+        list.appendChild(li);
+      });
+      document.getElementById('stats-ranking-area').style.display = '';
+    }
+
+    document.getElementById('stats-loading').style.display = 'none';
+    document.getElementById('stats-section').style.display = '';
+  } catch (e) {}
+}
+
+trackAccess();
+loadCommunityStats();
 </script>
 </body>
 </html>
