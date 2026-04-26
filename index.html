@@ -135,29 +135,47 @@
       .chara-card { max-width: 100%; width: 100%; }
     }
 
-    .stats-section {
-      width: 100%;
+    .btn-community {
       background: white;
-      border-radius: 16px;
-      padding: 20px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      border: 2px solid #e8b4d0;
+      color: #c2185b;
+      padding: 10px 28px;
+      font-size: 0.9rem;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: background 0.15s;
     }
-    .stats-title { text-align: center; font-size: 1rem; color: #c2185b; font-weight: bold; margin-bottom: 12px; }
-    .stats-counter-line { text-align: center; font-size: 0.9rem; color: #666; margin-bottom: 16px; }
-    .stats-counter-num { font-size: 1.4rem; font-weight: bold; color: #f06292; }
-    .stats-ranking-title { font-size: 0.82rem; color: #999; margin-bottom: 8px; text-align: center; }
+    .btn-community:hover { background: #fce4ec; }
+
+    #screen-stats { display: none; width: 100%; max-width: 700px; padding: 20px 16px; }
+    .stats-page-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .btn-back { background: none; border: 1px solid #ddd; color: #888; padding: 6px 16px; border-radius: 16px; cursor: pointer; font-size: 0.85rem; }
+    .btn-back:hover { background: #f5f5f5; }
+    .stats-page-title { font-size: 1.2rem; color: #c2185b; font-weight: bold; }
+
+    .stats-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
+    .stats-tab { padding: 8px 18px; border: 2px solid #e8b4d0; border-radius: 20px; background: white; color: #c2185b; font-size: 0.85rem; cursor: pointer; transition: all 0.15s; }
+    .stats-tab.active { background: linear-gradient(135deg, #f06292, #ce93d8); border-color: transparent; color: white; font-weight: bold; }
+    .stats-tab:hover:not(.active) { background: #fce4ec; }
+
+    .stats-access { text-align: center; font-size: 0.9rem; color: #666; margin-bottom: 20px; padding: 12px; background: white; border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,0.07); }
+    .stats-access-num { font-size: 1.5rem; font-weight: bold; color: #f06292; }
+
+    .stats-rank-section { background: white; border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,0.07); padding: 14px; margin-bottom: 12px; }
+    .stats-rank-section-title { font-size: 0.88rem; font-weight: bold; color: #c2185b; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #fce4ec; }
     .stats-rank-list { list-style: none; }
-    .stats-rank-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-bottom: 1px solid #fce4ec; }
+    .stats-rank-item { display: flex; align-items: center; gap: 10px; padding: 5px 4px; border-bottom: 1px solid #fce4ec; }
     .stats-rank-item:last-child { border-bottom: none; }
     .stats-rank-num { font-size: 0.9rem; font-weight: bold; color: #bbb; width: 30px; text-align: center; flex-shrink: 0; }
     .stats-rank-num.top1 { color: #ffd700; font-size: 1.1rem; }
     .stats-rank-num.top2 { color: #c0c0c0; font-size: 1rem; }
     .stats-rank-num.top3 { color: #cd7f32; font-size: 1rem; }
-    .stats-rank-thumb { width: 36px; height: 36px; border-radius: 50%; overflow: hidden; background: #fce4ec; flex-shrink: 0; }
+    .stats-rank-thumb { width: 34px; height: 34px; border-radius: 50%; overflow: hidden; background: #fce4ec; flex-shrink: 0; }
     .stats-rank-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: center 10%; }
     .stats-rank-name { flex: 1; font-size: 0.88rem; font-weight: bold; }
     .stats-rank-count { font-size: 0.75rem; color: #aaa; flex-shrink: 0; }
-    .stats-loading { text-align: center; color: #ccc; font-size: 0.82rem; padding: 8px; }
+    .stats-no-data { font-size: 0.82rem; color: #ccc; text-align: center; padding: 8px; }
+    .stats-loading { text-align: center; color: #ccc; font-size: 0.85rem; padding: 24px; }
   </style>
 </head>
 <body>
@@ -191,18 +209,21 @@
   <p id="start-desc" style="color:#666;line-height:1.7;"></p>
   <p style="color:#aaa;font-size:0.8rem;">迷ったときは「スキップ」ボタンも使えます。</p>
   <button class="btn-start" onclick="startSort()">スタート！</button>
+  <button class="btn-community" onclick="goToStats()">🌸 みんなの結果を見る</button>
+</div>
 
-  <div id="stats-section" class="stats-section" style="display:none">
-    <div class="stats-title">🌸 みんなのキャラソート</div>
-    <div class="stats-counter-line" id="stats-counter-line" style="display:none">
-      <span class="stats-counter-num" id="stats-access-num">0</span> 人が挑戦しました！
-    </div>
-    <div id="stats-ranking-area" style="display:none">
-      <div class="stats-ranking-title">1位に選ばれた回数ランキング</div>
-      <ol class="stats-rank-list" id="stats-rank-list"></ol>
-    </div>
-    <div class="stats-loading" id="stats-loading">読み込み中…</div>
+<div id="screen-stats">
+  <div class="stats-page-header">
+    <button class="btn-back" onclick="goToStart()">← もどる</button>
+    <span class="stats-page-title">みんなのキャラソート結果</span>
   </div>
+  <div class="stats-tabs">
+    <button class="stats-tab active" data-scope="all"    onclick="showStatsTab('all')">全員</button>
+    <button class="stats-tab"        data-scope="grade1" onclick="showStatsTab('grade1')">1年生</button>
+    <button class="stats-tab"        data-scope="grade2" onclick="showStatsTab('grade2')">2年生</button>
+    <button class="stats-tab"        data-scope="grade3" onclick="showStatsTab('grade3')">3年生</button>
+  </div>
+  <div id="stats-content"><div class="stats-loading">読み込み中…</div></div>
 </div>
 
 <div id="screen-battle">
@@ -354,8 +375,8 @@ function updateStartDesc() {
 
 function goToStart() {
   document.getElementById('screen-result').style.display = 'none';
+  document.getElementById('screen-stats').style.display  = 'none';
   document.getElementById('screen-start').style.display  = 'flex';
-  loadCommunityStats();
 }
 
 function eloUpdate(winnerScore, loserScore) {
@@ -410,6 +431,7 @@ function pickPair(ids, ratings, appearances) {
 }
 
 async function startSort() {
+  trackAccess(selectedScope);
   const targetChars = getFilteredCharacters().filter(c => c.name && c.name.trim() !== '');
   if (targetChars.length < 2) {
     alert('ソートするキャラクターが足りません（2名以上必要です）。');
@@ -470,7 +492,7 @@ function showResult(sorted) {
     list.appendChild(li);
   });
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  if (sorted.length > 0) trackResult(sorted[0].id);
+  trackResult(selectedScope, sorted);
 }
 
 function copyResult() {
@@ -496,12 +518,6 @@ function copyResult() {
 
 updateStartDesc();
 
-// ── Firebase 設定 ──────────────────────────────────────────────────────────────
-// 1. https://console.firebase.google.com/ でプロジェクトを作成
-// 2. Realtime Database を有効化（テストモードで開始でOK）
-// 3. Database Rules を以下に設定:
-//    { "rules": { "stats": { ".read": true, ".write": true } } }
-// 4. プロジェクト設定 > マイアプリ からウェブアプリを追加し、下記の値を埋める
 const FIREBASE_CONFIG = {
   apiKey:            "AIzaSyCYw776ifW69Cb6tIh5qF9JCB4WNUBQTMU",
   authDomain:        "chara-sort-3460b.firebaseapp.com",
@@ -511,68 +527,84 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "849713435758",
   appId:             "1:849713435758:web:7d63a2dd4e7889f36b427f"
 };
-// ─────────────────────────────────────────────────────────────────────────────
 
 let _db = null;
 (function initFirebase() {
   if (typeof firebase === 'undefined') return;
-  if (FIREBASE_CONFIG.apiKey.startsWith('YOUR_')) return;
   try {
     firebase.initializeApp(FIREBASE_CONFIG);
     _db = firebase.database();
   } catch (e) {}
 })();
 
-function trackAccess() {
+function trackAccess(scope) {
   if (!_db) return;
-  _db.ref('stats/accessCount').transaction(v => (v || 0) + 1).catch(() => {});
+  _db.ref('stats/' + scope + '/accessCount').transaction(v => (v || 0) + 1).catch(() => {});
 }
 
-function trackResult(charId) {
+function trackResult(scope, sorted) {
   if (!_db) return;
-  _db.ref('stats/votes/' + charId).transaction(v => (v || 0) + 1).catch(() => {});
+  sorted.slice(0, 5).forEach((chara, i) => {
+    _db.ref('stats/' + scope + '/ranks/' + (i + 1) + '/' + chara.id)
+      .transaction(v => (v || 0) + 1).catch(() => {});
+  });
 }
 
-async function loadCommunityStats() {
-  if (!_db) return;
+function goToStats() {
+  document.getElementById('screen-start').style.display = 'none';
+  document.getElementById('screen-stats').style.display = 'block';
+  showStatsTab('all');
+}
+
+async function showStatsTab(scope) {
+  document.querySelectorAll('.stats-tab').forEach(b => b.classList.toggle('active', b.dataset.scope === scope));
+  const content = document.getElementById('stats-content');
+  content.innerHTML = '<div class="stats-loading">読み込み中…</div>';
+
+  if (!_db) {
+    content.innerHTML = '<div class="stats-loading">データを読み込めませんでした</div>';
+    return;
+  }
+
   try {
-    const snap = await _db.ref('stats').get();
+    const snap = await _db.ref('stats/' + scope).get();
     const data = snap.val() || {};
     const accessCount = data.accessCount || 0;
-    const votes = data.votes || {};
+    const ranks = data.ranks || {};
 
-    document.getElementById('stats-access-num').textContent = accessCount.toLocaleString();
-    document.getElementById('stats-counter-line').style.display = '';
+    const scopeLabel = { all: '全員', grade1: '1年生', grade2: '2年生', grade3: '3年生' }[scope];
+    let html = `<div class="stats-access"><span class="stats-access-num">${accessCount.toLocaleString()}</span> 人が「${scopeLabel}」でソートに挑戦！</div>`;
 
-    const ranked = Object.entries(votes)
-      .map(([id, count]) => ({ chara: characters.find(c => c.id === Number(id)), count }))
-      .filter(x => x.chara)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
+    for (let r = 1; r <= 5; r++) {
+      const votes = ranks[r] || {};
+      const ranked = Object.entries(votes)
+        .map(([id, count]) => ({ chara: characters.find(c => c.id === Number(id)), count }))
+        .filter(x => x.chara)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
 
-    if (ranked.length > 0) {
-      const list = document.getElementById('stats-rank-list');
-      list.innerHTML = '';
-      ranked.forEach(({ chara, count }, i) => {
-        const rank = i + 1;
-        const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
-        const rankLabel = medals[rank] || (rank + '位');
-        const rankClass = rank <= 3 ? 'top' + rank : '';
-        const li = document.createElement('li');
-        li.className = 'stats-rank-item';
-        li.innerHTML = `<span class="stats-rank-num ${rankClass}">${rankLabel}</span><div class="stats-rank-thumb"><img src="${BASE_IMG}${chara.img}.png" alt="${chara.name}" onerror="this.style.display='none'" loading="lazy"></div><span class="stats-rank-name">${chara.name}</span><span class="stats-rank-count">${count}回</span>`;
-        list.appendChild(li);
-      });
-      document.getElementById('stats-ranking-area').style.display = '';
+      const ordinals = ['', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣'];
+      html += `<div class="stats-rank-section"><div class="stats-rank-section-title">${ordinals[r]} ${r}位に選ばれたキャラ ランキング</div>`;
+      if (ranked.length === 0) {
+        html += '<div class="stats-no-data">まだデータがありません</div>';
+      } else {
+        html += '<ol class="stats-rank-list">';
+        ranked.forEach(({ chara, count }, i) => {
+          const medals = { 0: '🥇', 1: '🥈', 2: '🥉' };
+          const label = medals[i] !== undefined ? medals[i] : (i + 1) + '位';
+          const cls = i < 3 ? 'top' + (i + 1) : '';
+          html += `<li class="stats-rank-item"><span class="stats-rank-num ${cls}">${label}</span><div class="stats-rank-thumb"><img src="${BASE_IMG}${chara.img}.png" alt="${chara.name}" onerror="this.style.display='none'" loading="lazy"></div><span class="stats-rank-name">${chara.name}</span><span class="stats-rank-count">${count}回</span></li>`;
+        });
+        html += '</ol>';
+      }
+      html += '</div>';
     }
 
-    document.getElementById('stats-loading').style.display = 'none';
-    document.getElementById('stats-section').style.display = '';
-  } catch (e) {}
+    content.innerHTML = html;
+  } catch (e) {
+    content.innerHTML = '<div class="stats-loading">読み込みに失敗しました</div>';
+  }
 }
-
-trackAccess();
-loadCommunityStats();
 </script>
 </body>
 </html>
