@@ -121,13 +121,8 @@
 
     .result-thumb { width: 52px; height: 52px; border-radius: 50%; overflow: hidden; background: #fce4ec; flex-shrink: 0; }
     .result-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: center 10%; }
-    .result-info { flex: 1; min-width: 0; }
-    .result-name { font-size: 1rem; font-weight: bold; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .result-class { font-size: 0.78rem; color: #aaa; display: block; }
-    .result-stats { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
-    .result-stat { font-size: 0.7rem; color: #bbb; white-space: nowrap; }
-    .result-stat-bar-wrap { width: 56px; height: 3px; background: #f0d0e8; border-radius: 2px; overflow: hidden; }
-    .result-stat-bar { height: 100%; background: linear-gradient(90deg, #f06292, #ce93d8); border-radius: 2px; }
+    .result-name { font-size: 1rem; font-weight: bold; flex: 1; }
+    .result-class { font-size: 0.78rem; color: #aaa; }
 
     .result-actions { display: flex; gap: 12px; justify-content: center; margin-top: 28px; flex-wrap: wrap; }
     .btn-retry, .btn-share { padding: 12px 32px; border-radius: 25px; font-size: 0.95rem; cursor: pointer; border: none; transition: transform 0.1s; }
@@ -384,8 +379,8 @@ async function startSort() {
   document.getElementById('screen-battle').style.display = 'block';
   updateProgress();
 
-  const ratings = {}, appearances = {}, byId = {}, winCount = {};
-  targetChars.forEach(c => { ratings[c.id] = 1000; appearances[c.id] = 0; byId[c.id] = c; winCount[c.id] = 0; });
+  const ratings = {}, appearances = {}, byId = {};
+  targetChars.forEach(c => { ratings[c.id] = 1000; appearances[c.id] = 0; byId[c.id] = c; });
   const ids = targetChars.map(c => c.id);
 
   const eloRounds = currentTotalRounds - finalTotal;
@@ -394,8 +389,8 @@ async function startSort() {
     appearances[idA]++;
     appearances[idB]++;
     const choice = await askUser(byId[idA], byId[idB]);
-    if (choice === 'left')       { winCount[idA]++; [ratings[idA], ratings[idB]] = eloUpdate(ratings[idA], ratings[idB]); }
-    else if (choice === 'right') { winCount[idB]++; [ratings[idB], ratings[idA]] = eloUpdate(ratings[idB], ratings[idA]); }
+    if (choice === 'left')       [ratings[idA], ratings[idB]] = eloUpdate(ratings[idA], ratings[idB]);
+    else if (choice === 'right') [ratings[idB], ratings[idA]] = eloUpdate(ratings[idB], ratings[idA]);
   }
 
   const mainSorted = [...targetChars].sort((a, b) => ratings[b.id] - ratings[a.id]);
@@ -403,19 +398,17 @@ async function startSort() {
   const wins = Object.fromEntries(finalists.map(id => [id, 0]));
   for (let i = 0; i < finalists.length; i++) {
     for (let j = i + 1; j < finalists.length; j++) {
-      appearances[finalists[i]]++;
-      appearances[finalists[j]]++;
       const choice = await askUser(byId[finalists[i]], byId[finalists[j]]);
-      if (choice === 'left')       { wins[finalists[i]]++; winCount[finalists[i]]++; }
-      else if (choice === 'right') { wins[finalists[j]]++; winCount[finalists[j]]++; }
+      if (choice === 'left')       wins[finalists[i]]++;
+      else if (choice === 'right') wins[finalists[j]]++;
     }
   }
 
   const finalRanked = [...finalists].sort((a, b) => wins[b] - wins[a] || ratings[b] - ratings[a]);
-  showResult([...finalRanked.map(id => byId[id]), ...mainSorted.slice(finalCount)], ratings, appearances, winCount);
+  showResult([...finalRanked.map(id => byId[id]), ...mainSorted.slice(finalCount)]);
 }
 
-function showResult(sorted, ratings, appearances, winCount) {
+function showResult(sorted) {
   document.getElementById('screen-battle').style.display = 'none';
   document.getElementById('screen-result').style.display = 'block';
   const list = document.getElementById('result-list');
@@ -426,12 +419,9 @@ function showResult(sorted, ratings, appearances, winCount) {
     if (rank === 1) { rankClass = 'top1'; rankLabel = '🥇'; }
     if (rank === 2) { rankClass = 'top2'; rankLabel = '🥈'; }
     if (rank === 3) { rankClass = 'top3'; rankLabel = '🥉'; }
-    const app = appearances ? (appearances[chara.id] || 0) : 0;
-    const wc  = winCount   ? (winCount[chara.id]   || 0) : 0;
-    const winRate = app > 0 ? Math.round(wc / app * 100) : 0;
     const li = document.createElement('li');
     li.className = 'result-item';
-    li.innerHTML = `<span class="result-rank ${rankClass}">${rankLabel}</span><div class="result-thumb"><img src="${BASE_IMG}${chara.img}.png" alt="${chara.name}" onerror="this.style.display='none'" loading="lazy"></div><div class="result-info"><span class="result-name">${chara.name}</span><span class="result-class">${chara.cls}組</span></div><div class="result-stats"><span class="result-stat">出場 ${app}回</span><span class="result-stat">勝率 ${winRate}%</span><div class="result-stat-bar-wrap"><div class="result-stat-bar" style="width:${winRate}%"></div></div></div>`;
+    li.innerHTML = `<span class="result-rank ${rankClass}">${rankLabel}</span><div class="result-thumb"><img src="${BASE_IMG}${chara.img}.png" alt="${chara.name}" onerror="this.style.display='none'" loading="lazy"></div><span class="result-name">${chara.name}</span><span class="result-class">${chara.cls}組</span>`;
     list.appendChild(li);
   });
   window.scrollTo({ top: 0, behavior: 'smooth' });
