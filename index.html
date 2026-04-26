@@ -333,8 +333,8 @@ function showCard(side, chara) {
   const imgWrap = document.getElementById('img-' + side);
   const year = chara.cls[0];
   imgWrap.innerHTML = `<img class="chara-img" src="${BASE_IMG}${chara.img}.png" alt="${chara.name}" onerror="this.parentNode.innerHTML='<div class=\\'img-placeholder\\'>✿</div>'" loading="lazy"><img class="profile-img" src="${BASE_IMG}profile_${year}.png" alt="" loading="lazy">`;
-  document.getElementById('name-' + side).textContent = chara.name;
-  document.getElementById('class-' + side).textContent = chara.cls + '組';
+  document.getElementById('name-' + side).textContent = chara.name || '（名前なし）';
+  document.getElementById('class-' + side).textContent = chara.cls ? chara.cls + '組' : '';
 }
 
 function choose(side) {
@@ -369,7 +369,11 @@ function pickPair(ids, ratings, appearances) {
 }
 
 async function startSort() {
-  const targetChars = getFilteredCharacters();
+  const targetChars = getFilteredCharacters().filter(c => c.name && c.name.trim() !== '');
+  if (targetChars.length < 2) {
+    alert('ソートするキャラクターが足りません（2名以上必要です）。');
+    return;
+  }
   const finalCount = Math.min(3, targetChars.length);
   const finalTotal = finalCount * (finalCount - 1) / 2;
   currentTotalRounds = calcTotalRounds(targetChars.length) + finalTotal;
@@ -429,10 +433,20 @@ function showResult(sorted) {
 
 function copyResult() {
   const items = document.querySelectorAll('.result-item');
+  if (items.length === 0) {
+    alert('コピーする結果がありません。');
+    return;
+  }
   const lines = ['【あんガル！！ キャラソート結果】'];
   items.forEach((item, i) => {
-    lines.push(`${i+1}位: ${item.querySelector('.result-name').textContent}（${item.querySelector('.result-class').textContent}）`);
+    const name = item.querySelector('.result-name').textContent.trim();
+    const cls  = item.querySelector('.result-class').textContent.trim();
+    if (name) lines.push(`${i+1}位: ${name}（${cls}）`);
   });
+  if (lines.length <= 1) {
+    alert('コピーする結果がありません。');
+    return;
+  }
   navigator.clipboard.writeText(lines.join('\n'))
     .then(() => alert('クリップボードにコピーしました！'))
     .catch(() => alert('コピーに失敗しました'));
